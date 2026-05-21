@@ -1,51 +1,89 @@
 {% extends 'quiz/base.html' %}
 {% block content %}
 <div class="card p-4">
-  <form method="post">
-    
-    {% csrf_token %}
-    <h4 class="mb-3">{{ question.text }}</h4>
-    
-    {% if question.question_type == 'single' %}
-      {% for choice in choices %}
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="choice" id="c{{ choice.id }}" value="{{ choice.id }}">
-          <label class="form-check-label" for="c{{ choice.id }}">{{ choice.text }}</label>
-        </div>
-      {% endfor %}
-    
-    {% elif question.question_type == 'multiple' %}
-      <div class="mb-2 text-muted">Выберите все правильные варианты:</div>
-      {% for choice in choices %}
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" name="choices" id="c{{ choice.id }}" value="{{ choice.id }}">
-          <label class="form-check-label" for="c{{ choice.id }}">{{ choice.text }}</label>
-        </div>
-      {% endfor %}
-    
-    {% elif question.question_type == 'text' %}
-      <div class="mb-3">
-        <label for="textAnswer" class="form-label">Введите ваш ответ:</label>
-        <input type="text" class="form-control" id="textAnswer" name="text_answer" autocomplete="off">
-      </div>
-    
-    {% elif question.question_type == 'ordering' %}
-      <div class="mb-2 text-muted">Расставьте пункты в правильном порядке (1 — первый, 2 — второй и т.д.):</div>
-      {% for choice in choices %}
-        <div class="row mb-2 align-items-center">
-          <div class="col-auto">
-            <input type="number" class="form-control" name="order_{{ choice.id }}" 
-                   min="1" max="{{ choices|length }}" style="width: 5rem;" placeholder="№">
+  {% if question and choices is not None %}
+    <form method="post" id="quiz-form">
+      {% csrf_token %}
+      <h4 class="mb-3">{{ question.text }}</h4>
+
+      {% if question.question_type != 'text' %}
+        <input type="hidden" name="choices_order" value="{% for choice in choices %}{{ choice.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+      {% endif %}
+
+      {% if question.question_type == 'single' %}
+        {% for choice in choices %}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="choice" id="c{{ choice.id }}" value="{{ choice.id }}" required>
+            <label class="form-check-label" for="c{{ choice.id }}">{{ choice.text }}</label>
           </div>
-          <div class="col">{{ choice.text }}</div>
+        {% endfor %}
+
+      {% elif question.question_type == 'multiple' %}
+        <div class="mb-2 text-muted">Выберите все правильные варианты:</div>
+        {% for choice in choices %}
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="choices" id="c{{ choice.id }}" value="{{ choice.id }}">
+            <label class="form-check-label" for="c{{ choice.id }}">{{ choice.text }}</label>
+          </div>
+        {% endfor %}
+
+      {% elif question.question_type == 'text' %}
+        <div class="mb-3">
+          <label for="textAnswer" class="form-label">Введите ваш ответ:</label>
+          <input type="text" class="form-control" id="textAnswer" name="text_answer" autocomplete="off" required>
         </div>
-      {% endfor %}
+
+      {% elif question.question_type == 'ordering' %}
+        <div class="mb-2 text-muted">Расставьте пункты в правильном порядке (перетащите за значок <span class="drag-handle-icon">⠿</span>):</div>
+        <ul id="sortable-list" class="list-group mb-3">
+          {% for choice in choices %}
+            <li class="list-group-item d-flex align-items-center" data-id="{{ choice.id }}">
+              <span class="drag-handle me-2">⠿</span>
+              <span>{{ choice.text }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <input type="hidden" name="ordering_list" id="ordering-list-input" value="">
+      {% endif %}
+
+      <button type="submit" class="btn btn-primary mt-3">Ответить</button>
+    </form>
+
+    {% if session %}
+      <div class="text-muted mt-2">
+        Вопрос {{ session.current_index|add:1 }} из {{ session.total_questions }}
+      </div>
     {% endif %}
-    
-    <button type="submit" class="btn btn-primary mt-3">Ответить</button>
-  </form>
-  <div class="text-muted mt-2">
-    Вопрос {{ session.current_index|add:1 }} из {{ session.total_questions }}
-  </div>
+
+    {% if question.question_type == 'ordering' %}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const sortableList = document.getElementById('sortable-list');
+        const hiddenInput = document.getElementById('ordering-list-input');
+        const updateHiddenInput = () => {
+          const items = sortableList.querySelectorAll('li');
+          const order = Array.from(items).map(item => item.dataset.id).join(',');
+          hiddenInput.value = order;
+        };
+        updateHiddenInput();
+        new Sortable(sortableList, {
+          animation: 200,
+          handle: '.drag-handle',
+          ghostClass: 'bg-light',
+          onEnd: function() { updateHiddenInput(); }
+        });
+      });
+    </script>
+    <style>
+      .drag-handle { cursor: grab; color: #6c757d; font-size: 1.3rem; user-select: none; }
+      .drag-handle:active { cursor: grabbing; }
+      #sortable-list .list-group-item { user-select: none; }
+    </style>
+    {% endif %}
+
+  {% else %}
+    <div class="alert alert-warning">Вопрос временно недоступен. <a href="{% url 'quiz:start' %}">Начать заново</a></div>
+  {% endif %}
 </div>
 {% endblock %}
