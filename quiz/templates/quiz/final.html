@@ -1,0 +1,30 @@
+{% extends 'quiz/base.html' %}
+{% block content %}
+<div class="card p-4">
+  <h2 class="mb-3">Тест завершён!</h2>
+  <h4>Ваш результат: {{ session.score }} из {{ session.total_questions }}</h4>
+  <div class="progress mb-4" style="height: 25px;">
+    <div class="progress-bar bg-success" role="progressbar" 
+         style="width: {% widthratio session.score session.total_questions 100 %}%;" 
+         aria-valuenow="{{ session.score }}" aria-valuemin="0" aria-valuemax="{{ session.total_questions }}">
+      {% widthratio session.score session.total_questions 100 %}%
+    </div>
+  </div>
+  
+  <h5>Детализация:</h5>
+  <ul class="list-group">
+    {% for answer in answers %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        <span>{{ answer.question.text|truncatechars:60 }}</span>
+        {% if answer.is_correct %}
+          <span class="badge bg-success">Правильно</span>
+        {% else %}
+          <span class="badge bg-danger">Неправильно</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  
+  <a href="{% url 'quiz:restart' %}" class="btn btn-primary mt-4">Пройти тест заново</a>
+</div>
+{% endblock %}

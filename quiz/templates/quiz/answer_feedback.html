@@ -1,0 +1,92 @@
+{% extends 'quiz/base.html' %}
+{% block content %}
+<div class="card p-4">
+  {% if is_correct %}
+    <div class="alert alert-success text-center mb-4">
+      <h2 class="mb-0">✓ Правильно!</h2>
+    </div>
+  {% else %}
+    <div class="alert alert-danger text-center mb-4">
+      <h2 class="mb-0">✗ Неправильно</h2>
+      <p class="mt-2 mb-0">Запомните правильный ответ:</p>
+    </div>
+  {% endif %}
+
+  <p class="fs-5"><strong>Вопрос:</strong> {{ question.text }}</p>
+
+  <!-- Блок с правильным ответом (всегда показывается) -->
+  <div class="card bg-light p-3 mb-3 border-success">
+    <h5 class="text-success mb-3">✅ Правильный ответ</h5>
+    {% if question.question_type == 'single' or question.question_type == 'multiple' %}
+      <ul class="list-group">
+        {% for choice in choices %}
+          <li class="list-group-item {% if choice.id in correct_choice_ids %} list-group-item-success fw-bold{% endif %}">
+            {{ choice.text }}
+            {% if choice.id in correct_choice_ids %}<span class="badge bg-success ms-2">верно</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% elif question.question_type == 'text' %}
+      <p class="fs-5"><strong>{{ correct_answer_text }}</strong></p>
+    {% elif question.question_type == 'ordering' %}
+      <p class="fs-5"><strong>{{ correct_answer_text }}</strong></p>
+      <ol class="list-group list-group-numbered">
+        {% for choice in correct_order %}
+          <li class="list-group-item list-group-item-success">{{ choice.text }}</li>
+        {% endfor %}
+      </ol>
+    {% endif %}
+  </div>
+
+  <!-- Блок с ответом пользователя (только если ошибка) -->
+  {% if not is_correct %}
+    <div class="card bg-light p-3 mb-3 border-danger">
+      <h5 class="text-danger mb-3">❌ Ваш ответ</h5>
+      {% if question.question_type == 'single' %}
+        <ul class="list-group">
+          {% for choice in choices %}
+            <li class="list-group-item {% if choice.id in selected_choice_ids %} list-group-item-danger{% endif %}">
+              {{ choice.text }}
+              {% if choice.id in selected_choice_ids %}<span class="badge bg-danger ms-2">выбрано</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% elif question.question_type == 'multiple' %}
+        <ul class="list-group">
+          {% for choice in choices %}
+            <li class="list-group-item {% if choice.id in selected_choice_ids %} list-group-item-warning{% endif %}">
+              {{ choice.text }}
+              {% if choice.id in selected_choice_ids %}<span class="badge bg-warning text-dark ms-2">выбрано</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% elif question.question_type == 'text' %}
+        <p class="fs-5">{{ user_text }}</p>
+      {% elif question.question_type == 'ordering' %}
+        <ol class="list-group list-group-numbered">
+          {% for id in user_ordered_ids %}
+            {% for choice in choices %}
+              {% if choice.id == id %}
+                <li class="list-group-item">{{ choice.text }}</li>
+              {% endif %}
+            {% endfor %}
+          {% empty %}
+            <li class="list-group-item text-muted">Нет ответа</li>
+          {% endfor %}
+        </ol>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Кнопка продолжения с разным текстом -->
+  <div class="text-center mt-4">
+    {% if has_next %}
+      <a href="{% url 'quiz:question' %}" class="btn btn-primary btn-lg px-5">
+        {% if is_correct %}Следующий вопрос{% else %}Я запомнил(а), дальше{% endif %}
+      </a>
+    {% else %}
+      <a href="{% url 'quiz:final' %}" class="btn btn-warning btn-lg px-5">Завершить тест</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

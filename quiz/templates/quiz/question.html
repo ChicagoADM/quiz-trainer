@@ -1,0 +1,51 @@
+{% extends 'quiz/base.html' %}
+{% block content %}
+<div class="card p-4">
+  <form method="post">
+    
+    {% csrf_token %}
+    <h4 class="mb-3">{{ question.text }}</h4>
+    
+    {% if question.question_type == 'single' %}
+      {% for choice in choices %}
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="choice" id="c{{ choice.id }}" value="{{ choice.id }}">
+          <label class="form-check-label" for="c{{ choice.id }}">{{ choice.text }}</label>
+        </div>
+      {% endfor %}
+    
+    {% elif question.question_type == 'multiple' %}
+      <div class="mb-2 text-muted">Выберите все правильные варианты:</div>
+      {% for choice in choices %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="choices" id="c{{ choice.id }}" value="{{ choice.id }}">
+          <label class="form-check-label" for="c{{ choice.id }}">{{ choice.text }}</label>
+        </div>
+      {% endfor %}
+    
+    {% elif question.question_type == 'text' %}
+      <div class="mb-3">
+        <label for="textAnswer" class="form-label">Введите ваш ответ:</label>
+        <input type="text" class="form-control" id="textAnswer" name="text_answer" autocomplete="off">
+      </div>
+    
+    {% elif question.question_type == 'ordering' %}
+      <div class="mb-2 text-muted">Расставьте пункты в правильном порядке (1 — первый, 2 — второй и т.д.):</div>
+      {% for choice in choices %}
+        <div class="row mb-2 align-items-center">
+          <div class="col-auto">
+            <input type="number" class="form-control" name="order_{{ choice.id }}" 
+                   min="1" max="{{ choices|length }}" style="width: 5rem;" placeholder="№">
+          </div>
+          <div class="col">{{ choice.text }}</div>
+        </div>
+      {% endfor %}
+    {% endif %}
+    
+    <button type="submit" class="btn btn-primary mt-3">Ответить</button>
+  </form>
+  <div class="text-muted mt-2">
+    Вопрос {{ session.current_index|add:1 }} из {{ session.total_questions }}
+  </div>
+</div>
+{% endblock %}

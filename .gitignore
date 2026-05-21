@@ -1,0 +1,15 @@
+# Django
+*.sqlite3
+*.log
+*.pot
+*.pyc
+__pycache__/
+local_settings.py
+
+# Environment
+.env
+venv/
+env/
+
+# Docker
+db.sqlite3
