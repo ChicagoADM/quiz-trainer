@@ -5,9 +5,11 @@ services:
     build: .
     container_name: quiz_app
     ports:
-      - "8000:8000"
-    env_file:
-      - .env
+      - "8007:8000"
+    environment:
+      - SECRET_KEY
+      - DEBUG
+      - ALLOWED_HOSTS
     volumes:
       - quiz_data:/app
     restart: unless-stopped
