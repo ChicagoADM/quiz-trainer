@@ -1,11 +1,7 @@
 from .models import Question, Choice
 
 def check_answer(question, data):
-    """
-    data – словарь с присланными из формы данными.
-    Возвращает (is_correct: bool, correct_answer: str) – 
-    правильный ответ для отображения.
-    """
+    """Для вопросов single, multiple, text. data – request.POST."""
     qtype = question.question_type
     if qtype == 'single':
         return check_single(question, data)
@@ -14,73 +10,56 @@ def check_answer(question, data):
     elif qtype == 'text':
         return check_text(question, data)
     elif qtype == 'ordering':
-        return check_ordering(question, data)
+        # Не должно вызываться, т.к. ordering проверяется отдельно,
+        # но оставим заглушку на всякий случай.
+        return False, "Неверный вызов для ordering"
     return False, "Неизвестный тип вопроса"
+
 
 def check_single(question, data):
     choice_id = data.get('choice')
-    correct_choice = question.choices.filter(is_correct=True).first()
-    if not correct_choice:
+    correct = question.choices.filter(is_correct=True).first()
+    if not correct:
         return False, "Ошибка: не задан правильный ответ"
-    correct_text = correct_choice.text
-    if choice_id and int(choice_id) == correct_choice.id:
+    if choice_id and int(choice_id) == correct.id:
+        return True, correct.text
+    return False, correct.text
+
+
+def check_multiple(question, data):
+    selected = set(map(int, data.getlist('choices')))
+    correct_qs = question.choices.filter(is_correct=True)
+    correct_ids = set(correct_qs.values_list('id', flat=True))
+    correct_text = ", ".join(correct_qs.values_list('text', flat=True))
+    if not correct_ids:
+        return False, "Ошибка: не заданы правильные ответы"
+    if selected == correct_ids:
         return True, correct_text
     return False, correct_text
 
-def check_multiple(question, data):
-    selected_ids = data.getlist('choices')   # список id
-    correct_ids = list(
-        question.choices.filter(is_correct=True).values_list('id', flat=True)
-    )
-    correct_texts = list(
-        question.choices.filter(is_correct=True).values_list('text', flat=True)
-    )
-    correct_answer_str = ", ".join(correct_texts)
-    if not correct_ids:
-        return False, "Ошибка: не заданы правильные ответы"
-    # Приводим к множеству целых чисел
-    try:
-        selected_ids = set(map(int, selected_ids))
-    except (TypeError, ValueError):
-        selected_ids = set()
-    correct_ids = set(correct_ids)
-    if selected_ids == correct_ids:
-        return True, correct_answer_str
-    return False, correct_answer_str
 
 def check_text(question, data):
     user_text = data.get('text_answer', '').strip()
-    correct_answer = question.correct_text.strip()
-    # Сравнение без учёта регистра и лишних пробелов
-    if user_text.lower() == correct_answer.lower():
-        return True, correct_answer
-    return False, correct_answer
+    correct = question.correct_text.strip()
+    if not correct:
+        return False, "Правильный ответ не задан"
+    if user_text.lower() == correct.lower():
+        return True, correct
+    return False, correct
 
-def check_ordering(question, data):
+
+def check_ordering(question, ordered_ids):
     """
-    Ожидаем, что в data пришли поля вида 'order_<choice_id>': ранг.
-    Правильный порядок задан через Choice.order_index.
+    ordered_ids – список ID вариантов в порядке, заданном пользователем.
     """
-    choices = question.choices.all()
-    correct_pairs = {c.id: c.order_index for c in choices if c.order_index is not None}
-    if not correct_pairs:
+    correct_qs = question.choices.filter(order_index__isnull=False).order_by('order_index')
+    correct_ids = list(correct_qs.values_list('id', flat=True))
+    if not correct_ids:
         return False, "Ошибка: не задан правильный порядок"
-    user_pairs = {}
-    for choice in choices:
-        key = f'order_{choice.id}'
-        val = data.get(key)
-        if val and val.isdigit():
-            user_pairs[choice.id] = int(val)
-    if user_pairs == correct_pairs:
-        # Сформируем строку правильной последовательности
-        ordered = sorted(correct_pairs.items(), key=lambda x: x[1])
-        correct_text = " → ".join(
-            [Choice.objects.get(pk=cid).text for cid, _ in ordered]
-        )
+
+    correct_text = " → ".join([c.text for c in correct_qs])
+
+    if ordered_ids == correct_ids:
         return True, correct_text
     else:
-        ordered = sorted(correct_pairs.items(), key=lambda x: x[1])
-        correct_text = " → ".join(
-            [Choice.objects.get(pk=cid).text for cid, _ in ordered]
-        )
         return False, correct_text
